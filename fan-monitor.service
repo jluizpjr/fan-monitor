@@ -1,0 +1,14 @@
+[Unit]
+Description=Fan Monitor for Corsair Commander Core XT and NVMe SSDs (English)
+After=multi-user.target
+
+[Service]
+ExecStart=/usr/bin/python3 /usr/local/bin/fan_monitor.py
+Restart=always
+User=root
+StandardOutput=null
+StandardError=journal
+WorkingDirectory=/usr/local/bin
+
+[Install]
+WantedBy=multi-user.target
