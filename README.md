@@ -1,96 +1,101 @@
 
-# Fan Monitor for Corsair Commander Core XT and NVMe SSDs
+# 🌀 Intelligent Fan Control with Q-learning
 
-This project provides a robust and fully-featured fan monitoring and control service designed for systems using the Corsair Commander Core XT and NVMe SSDs. It includes real-time temperature monitoring, smart fan speed regulation, emergency response for critical temperatures, and email alerts for system events.
+A complete thermal management system for Linux servers using **Q-learning**, real-time sensor feedback (liquidctl + smartctl), and adaptive fan control to optimize for **cooling efficiency and low noise**.
 
-## Features
+## 🚀 Features
 
-- ✅ Continuous monitoring of radiator temperatures (input and output)
-- ✅ Monitoring of all installed NVMe SSD temperatures
-- ✅ Smart control of radiator fans (1–3) and chassis fans (4–5)
-- ✅ Automatic hysteresis control to avoid fan speed oscillation
-- ✅ Emergency override: all fans set to 100% on critical temperature detection
-- ✅ Email alerts on:
-  - Service startup
-  - Normal shutdown or manual stop
-  - Crash or unexpected termination
-  - Critical temperature events
+- ✅ **Q-learning AI** for adaptive fan speed control
+- ✅ Monitors **radiator (Commander Core XT)** and **NVMe SSD temperatures**
+- ✅ Controls radiator and chassis fans individually
+- ✅ Automatically balances **temperature** and **noise**
+- ✅ 📈 Web dashboard (Streamlit) to visualize performance
+- ✅ 📁 Logs saved in `/var/log` for analysis
+- ✅ 🎨 Color-coded logs in terminal
+- ✅ 🛠 Installs as a systemd service
 
-## System Requirements
+---
 
-- Python 3.x
-- `liquidctl` installed and working
-- `smartctl` (from `smartmontools`)
-- Mail system installed and configured (e.g., `mailutils`)
-- Linux OS (tested on Debian/Ubuntu)
+## 🧠 How It Works
 
-## Installation
+The system collects temperature data and learns, over time, the best fan speed combination for:
 
-### Step 1: Install Dependencies
+- Reducing **radiator and SSD temperature**
+- Minimizing **fan noise**
+- Adapting to **dynamic workloads**
 
-```bash
-sudo apt update
-sudo apt install python3 pip smartmontools mailutils
-pip3 install liquidctl
-```
+It stores all decisions, actions, and rewards in `/var/log/fan_monitor_data.csv`.
 
-### Step 2: Clone the Repository and Run Installer
+---
+
+## 🖥 Dashboard (Streamlit)
+
+Run this to visualize system performance:
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/fan-monitor.git
-cd fan-monitor
-sudo ./install_fan_monitor.sh
+streamlit run fan_monitor_dashboard.py
 ```
 
-> Note: Make sure `fan_monitor.py`, `install_fan_monitor.sh`, and `fan-monitor.service` are in the same directory.
+### Includes:
+- Temperatures (Radiator + NVMe)
+- Estimated noise
+- Reward curve
+- Fan speeds over time
 
-### Step 3: Check Service Status
+---
+
+## 📦 Included Files
+
+| File | Description |
+|------|-------------|
+| `fan_monitor_qlearning_final.py` | Main script (Q-learning + sensors + fan control) |
+| `fan_monitor_qlearning_final.service` | Systemd unit for autostart |
+| `install_qlearning_final.sh` | Installer script |
+| `fan_monitor_dashboard.py` | Real-time dashboard via Streamlit |
+| `README.md` | This documentation |
+
+---
+
+## 🔧 Installation
+
+### Step 1: Install dependencies
 
 ```bash
-sudo systemctl status fan-monitor.service
+sudo apt install python3-pip smartmontools mailutils
+pip3 install liquidctl streamlit pandas matplotlib
 ```
 
-## Fan Mapping
-
-- **Fan 1–3**: Top, middle, and bottom radiator fans
-- **Fan 4–5**: General chassis cooling fans
-
-## Temperature Thresholds
-
-| Component        | Normal Range | Max Threshold | Critical Shutdown |
-|------------------|---------------|----------------|-------------------|
-| Radiator IN      | 35–45°C       | >45°C          | >60°C             |
-| NVMe SSDs        | 30–70°C       | >70°C          | >75°C             |
-
-## Logging
-
-- Log file location: `/var/log/fan_monitor.log`
-- Includes detailed temperature readings, fan speed changes, and event logs
-
-## Email Alerts
-
-- Uses the system's mail utility to send notifications to `root`
-- You can forward root's mail to your personal email using `aliases` or `mail forwarding`
-
-## Uninstallation
+### Step 2: Install the fan monitor system
 
 ```bash
-sudo systemctl disable --now fan-monitor.service
-sudo rm /usr/local/bin/fan_monitor.py
-sudo rm /etc/systemd/system/fan-monitor.service
-sudo rm /var/log/fan_monitor.log
-sudo systemctl daemon-reload
+chmod +x install_qlearning_final.sh
+sudo ./install_qlearning_final.sh
 ```
 
-## Contributing
+### Step 3: View logs
 
-Contributions and improvements are welcome! Feel free to submit a pull request or open an issue.
+```bash
+tail -f /var/log/fan_monitor_qlearning.log
+```
 
-## License
+---
 
-This project is licensed under the MIT License.
+## 🧼 Uninstall
 
-## Author
+```bash
+sudo systemctl stop fan_monitor_qlearning_final.service
+sudo systemctl disable fan_monitor_qlearning_final.service
+sudo rm /usr/local/bin/fan_monitor_qlearning_final.py
+sudo rm /etc/systemd/system/fan_monitor_qlearning_final.service
+```
 
-João Luiz Pereira Junior  
-📧 Email: [jluizpjr@gmail.com](mailto:jluizpjr@gmail.com)
+---
+
+## 📧 Author
+
+João Luiz Pereira  
+📫 jluizpjr@gmail.com
+
+---
+
+Enjoy silent, intelligent cooling. ❄️🧠

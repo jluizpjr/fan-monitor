@@ -1,0 +1,11 @@
+[Unit]
+Description=Fan Monitor with Q-learning (Final)
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/python3 /usr/local/bin/fan_monitor_qlearning_final.py
+Restart=always
+User=root
+
+[Install]
+WantedBy=multi-user.target
