@@ -1,14 +1,13 @@
 
 #!/usr/bin/env python3
 """
-Fan Monitor with Correct Temperature Logging and Color Output
+Fan Monitor for Corsair Commander Core XT and NVMe SSDs
 
-- Accurate °C formatting
-- Color-coded logs:
-    * Blue: <10°C
-    * Green: 10–40°C
-    * Yellow: 41–60°C
-    * Red: >60°C
+- Controls radiator and chassis fans based on temperature readings
+- Monitors radiator IN/OUT and all NVMe SSD temperatures
+- Handles hysteresis to avoid unnecessary fan changes
+- Triggers 100% fan speed and alerts on critical temperatures
+- Sends email notifications on startup, shutdown, and emergencies
 """
 
 import time
@@ -32,85 +31,63 @@ FAN_SPEED_MIN = 30
 FAN_SPEED_INITIAL = 40
 CHECK_INTERVAL = 30
 
-# Color formatter based on temperature
-class TempColorFormatter(logging.Formatter):
-    BLUE = '\033[94m'
-    GREEN = '\033[92m'
-    YELLOW = '\033[93m'
-    RED = '\033[91m'
-    RESET = '\033[0m'
+# Logging setup
+logging.basicConfig(
+    filename=LOG_FILE,
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s] %(message)s',
+)
 
-    def format(self, record):
-        message = super().format(record)
-        temp_match = re.search(r'(\d+(?:\.\d+)?)\s*°C', message)
-        if temp_match:
-            temp = float(temp_match.group(1))
-            if temp < 10:
-                return f"{self.BLUE}{message}{self.RESET}"
-            elif temp <= 40:
-                return f"{self.GREEN}{message}{self.RESET}"
-            elif 41 <= temp <= 60:
-                return f"{self.YELLOW}{message}{self.RESET}"
-            else:
-                return f"{self.RED}{message}{self.RESET}"
-        return message
-
-# Setup logger
-handler = logging.FileHandler(LOG_FILE)
-handler.setFormatter(TempColorFormatter('%(asctime)s [%(levelname)s] %(message)s'))
-logging.getLogger().handlers = []
-logging.getLogger().addHandler(handler)
-logging.getLogger().setLevel(logging.INFO)
-
-# Email alerts
+# Email notifications
 def send_email(subject, message):
     try:
-        subprocess.run(['mail', '-s', subject, 'root'], input=message, text=True, check=True)
+        subprocess.run(['mail', '-s', subject, 'jluizpjr@gmail.com'], input=message, text=True, check=True)
     except Exception as e:
         logging.error(f"Failed to send email '{subject}': {e}")
 
 def notify_start():
-    send_email("✅ Fan Monitor Started", "Monitoring started successfully.")
+    send_email("✅ Fan Monitor Started", "Fan monitoring service started successfully.")
 
 def notify_stop(reason="normal"):
     if reason == "normal":
-        send_email("🛑 Fan Monitor Stopped", "Service stopped normally.")
+        send_email("🛑 Fan Monitor Stopped", "Fan monitoring service stopped gracefully.")
     else:
-        send_email("❌ Fan Monitor Crashed", f"Error: {reason}")
+        send_email("❌ Fan Monitor Crashed", f"Service stopped due to error: {reason}")
 
-# Read NVMe temperatures (excluding Sensor 2)
+# NVMe temperature reader
 def get_nvme_temperatures():
     temps = []
     try:
         output = subprocess.check_output(['lsblk', '-dno', 'NAME,TYPE'], text=True)
         devices = [line.split()[0] for line in output.splitlines() if 'nvme' in line and 'disk' in line]
+
         for dev in devices:
             try:
                 data = subprocess.check_output(['smartctl', '-A', f'/dev/{dev}'], text=True).splitlines()
                 for line in data:
                     match = re.match(r'(Temperature.*?)\s*:\s*(\d+)', line)
                     if match:
-                        label = match.group(1).strip()
+                        sensor_label = match.group(1).strip()
                         temp = int(match.group(2))
-                        if "Sensor 2" not in label and temp > 0:
-                            temps.append((f"{dev} ({label})", temp))
+                        # Ignore Sensor 2 and temp <= 0
+                        if "Sensor 2" not in sensor_label and temp > 0:
+                            temps.append((f"{dev} ({sensor_label})", temp))
             except Exception as e:
                 logging.warning(f"Failed to read /dev/{dev}: {e}")
     except Exception as e:
         logging.error(f"Failed to list NVMe devices: {e}")
     return temps
 
-# Main function
+# Main loop
 def main():
-    logging.info("Fan monitor service starting...")
+    logging.info("Starting fan monitor...")
     notify_start()
 
     devices = find_liquidctl_devices()
     commander = next((d for d in devices if "Commander Core XT" in d.description), None)
-
     if not commander:
         logging.error("Commander Core XT not found.")
-        notify_stop("Commander Core XT not found")
+        notify_stop("Commander device not found")
         return 1
 
     rad_speed = FAN_SPEED_INITIAL
@@ -119,62 +96,62 @@ def main():
 
     try:
         with commander.connect():
-            logging.info("Initializing device...")
+            logging.info("Initializing Commander Core XT...")
             commander.initialize()
     except Exception as e:
-        notify_stop(f"Initialization error: {e}")
+        notify_stop(f"Initialization failed: {e}")
         return 1
 
     while True:
         try:
             time.sleep(CHECK_INTERVAL)
-            nvme_temps = get_nvme_temperatures()
-            max_nvme = max((t for _, t in nvme_temps), default=0)
-            for label, temp in nvme_temps:
-                logging.info(f"NVMe {label}: {temp:.1f}°C")
+            nvme = get_nvme_temperatures()
+            max_nvme = max((t for _, t in nvme), default=0)
+            for dev, temp in nvme:
+                logging.info(f"NVMe {dev}: {temp}°C")
 
             with commander.connect():
                 status = commander.get_status()
                 temp_in = temp_out = None
                 for key, val, unit in status:
                     if key == "Temperature 1":
-                        temp_in = float(val)
-                        logging.info(f"Radiator IN: {temp_in:.1f}°C")
+                        temp_in = val
+                        logging.info(f"Radiator IN: {val} {unit}")
                     elif key == "Temperature 0":
-                        temp_out = float(val)
-                        logging.info(f"Radiator OUT: {temp_out:.1f}°C")
-                if temp_in is not None and temp_out is not None:
+                        temp_out = val
+                        logging.info(f"Radiator OUT: {val} {unit}")
+                if temp_in and temp_out:
                     delta = round(temp_in - temp_out, 2)
-                    logging.info(f"Radiator ΔT: {delta:.2f}°C")
+                    logging.info(f"Radiator ΔT: {delta}°C")
 
-                # Emergency trigger
-                if (temp_in and temp_in > CRITICAL_RADIATOR_TEMP) or any(t > CRITICAL_NVME_TEMP for _, t in nvme_temps):
-                    reason = f"CRITICAL TEMP — Radiator IN: {temp_in:.1f}°C, NVMe MAX: {max_nvme:.1f}°C"
+                # Emergency check
+                if (temp_in and temp_in > CRITICAL_RADIATOR_TEMP) or any(t > CRITICAL_NVME_TEMP for _, t in nvme):
+                    reason = f"CRITICAL TEMP — Radiator IN: {temp_in}°C, NVMe MAX: {max_nvme}°C"
                     logging.critical(reason)
                     for i in range(1, 6):
                         commander.set_fixed_speed(f"fan{i}", 100)
                     send_email("⚠️ CRITICAL TEMPERATURE", reason)
                     continue
 
-                # Radiator fan control
+                # Adjust radiator fans
                 if temp_in:
                     if temp_in > RADIATOR_TEMP_MAX:
                         rad_speed = min(rad_speed + 5, FAN_SPEED_MAX)
-                    elif temp_in < (RADIATOR_TEMP_MIN - FAN_HYSTERESIS):
+                    elif temp_in < RADIATOR_TEMP_MIN - FAN_HYSTERESIS:
                         rad_speed = max(rad_speed - 5, FAN_SPEED_MIN)
 
-                # Chassis fan control
+                # Adjust chassis fans
                 if max_nvme > NVME_TEMP_MAX:
                     chs_speed = min(chs_speed + 5, FAN_SPEED_MAX)
-                elif max_nvme < (NVME_TEMP_MIN - FAN_HYSTERESIS):
+                elif max_nvme < NVME_TEMP_MIN - FAN_HYSTERESIS:
                     chs_speed = max(chs_speed - 5, FAN_SPEED_MIN)
 
+                # Apply fan speed changes
                 if rad_speed != last_rad:
                     for i in range(1, 4):
                         commander.set_fixed_speed(f"fan{i}", rad_speed)
                     last_rad = rad_speed
                     logging.info(f"Radiator fans set to {rad_speed}%")
-
                 if chs_speed != last_chs:
                     for i in range(4, 6):
                         commander.set_fixed_speed(f"fan{i}", chs_speed)
