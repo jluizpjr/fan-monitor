@@ -53,7 +53,7 @@ logging.basicConfig(
 def send_email(subject, message):
     try:
         subprocess.run(
-            ['mail', '-s', subject, 'root@pam'],
+            ['mail', '-s', subject, 'jluizpjr@gmail.com'],
             input=message,
             text=True,
             check=True
