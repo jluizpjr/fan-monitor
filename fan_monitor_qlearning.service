@@ -4,9 +4,7 @@ Description=Fan Monitor with Q-learning
 After=network.target
 
 [Service]
-Environment=ARG= 
-#Environment=ARG=--debug
-ExecStart=/usr/bin/python3 /usr/local/bin/fan_monitor_qlearning.py  ${ARG}
+ExecStart=/usr/bin/python3 /usr/local/bin/fan_monitor_qlearning.py
 Restart=always
 User=root
 
