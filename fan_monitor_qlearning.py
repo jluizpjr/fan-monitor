@@ -53,7 +53,7 @@ logging.basicConfig(
 def notify_root(subject, message):
     """Notifies the 'root' user via the system's 'mail' command."""
     try:
-        subprocess.run(['mail', '-s', subject, 'root'], input=message.encode(), check=True, timeout=10)
+        subprocess.run(['mail', '-s', subject, 'jluizpjr@gmail.com'], input=message.encode(), check=True, timeout=10)
         logging.info(f"Notification sent: '{subject}'")
     except FileNotFoundError:
         logging.error("'mail' command not found. Ensure 'mailutils' package or similar is installed.")
