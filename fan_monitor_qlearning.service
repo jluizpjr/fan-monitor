@@ -4,7 +4,7 @@ Description=Fan Monitor with Q-learning
 After=network.target
 
 [Service]
-ExecStart=/usr/bin/python3 /usr/local/bin/fan_monitor_qlearning.py
+ExecStart=/usr/bin/python3 /usr/local/bin/fan_monitor_qlearning.py --debug
 Restart=always
 User=root
 

@@ -29,7 +29,8 @@ if df.empty:
     st.warning("O arquivo CSV está vazio.")
     st.stop()
 
-df['timestamp'] = pd.to_datetime(df['timestamp'])
+#df['timestamp'] = pd.to_datetime(df['timestamp'])
+df['timestamp'] = pd.to_datetime(df['timestamp'], format='mixed')
 
 # 🎛️ Filtros na barra lateral com session_state
 st.sidebar.header("🔍 Filtros")

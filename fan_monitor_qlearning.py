@@ -36,7 +36,7 @@ BUCKET_STEP = 2 # Step for temperature discretization (bucketing)
 
 # Critical temperature limits for override
 CRITICAL_RAD_TEMP = 60
-CRITICAL_NVME_TEMP = 75
+CRITICAL_NVME_TEMP = 75 
 
 # --- Argument Parsing and Logging Setup ---
 parser = argparse.ArgumentParser(description="Fan monitor with Q-learning control.")
@@ -196,6 +196,9 @@ fan_chs_speed = 50
 
 notify_root("Fan Monitor Started", "Q-learning fan monitor is now active.")
 
+# --- Time tracking for notification throttling ---
+last_notification_time = 0.0 # Initialize to a time in the distant past
+
 # --- Main Loop ---
 try:
     while True:
@@ -276,7 +279,17 @@ try:
             logging.critical(f"🔥 Critical temperature detected! Radiator: {temp_rad_in}°C, NVMe: {temp_nvme}°C. Setting fans to 100%.")
             fan_rad_speed = 100
             fan_chs_speed = 100
-            notify_root("🔥 Critical Temperature", f"Radiator or NVMe overheat detected at {timestamp}! Radiator: {temp_rad_in}°C, NVMe: {temp_nvme}°C.")
+            #notify_root("🔥 Critical Temperature", f"Radiator or NVMe overheat detected at {timestamp}! Radiator: {temp_rad_in}°C, NVMe: {temp_nvme}°C.")
+            
+            # --- Notification Throttling Logic ---
+            current_time = time.time()
+            # Check if 60 seconds have passed since the last notification
+            if current_time - last_notification_time > 60:
+                notify_root("🔥 Critical Temperature", f"Radiator or NVMe overheat detected at {timestamp}! Radiator: {temp_rad_in}°C, NVMe: {temp_nvme}°C.")
+                last_notification_time = current_time # Update the notification timestamp
+            else:
+                logging.info("Critical temperature alert suppressed due to rate-limiting.")
+
 
         # 7. Apply Fan Speeds
         try:
